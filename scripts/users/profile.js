@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import encoding from 'k6/encoding';
-import getTokenByRefreshToken from '../../lib/auth.js';
+import getTokenOverAuthCode from '../../lib/browser-auth.js';
 import thresholds from '../../config/thresholds.js';
 
 const USER_HOST = getRequiredEnv('USER_HOST').replace(/\/+$/, '');
@@ -13,6 +13,16 @@ export const options = {
 	thresholds,
 	...(VUS !== undefined ? { vus: VUS } : {}),
 	...(DURATION ? { duration: DURATION } : {}),
+  scenarios: {
+    ui: {
+      executor: 'shared-iterations',
+      options: {
+        browser: {
+          type: 'chromium',
+        },
+      },
+    },
+  }
 };
 
 function getRequiredEnv(key) {
@@ -50,9 +60,9 @@ function decodeJwtPayload(jwtToken) {
 	return JSON.parse(payloadJson);
 }
 
-function ensureAccessTokenContext() {
+async function ensureAccessTokenContext() {
 
-	const tokenResponse = getTokenByRefreshToken();
+	const tokenResponse = await getTokenOverAuthCode();
 	var accessToken = tokenResponse.access_token;
 	var accessTokenClaims = decodeJwtPayload(accessToken);
 
@@ -103,9 +113,7 @@ function validateProfileMatchesToken(profileBody, claims) {
 	return comparedCount > 0;
 }
 
-export function setup() {
-
-	console.log(JSON.stringify(options));
+export async function setup() {
 
   return ensureAccessTokenContext();
 }
