@@ -4,7 +4,7 @@ This testcase validates the endpoint:
 
 - `${USER_HOST}/users/api/v0/users/profile`
 
-It uses refresh-token authentication in the init phase and then runs the profile API checks in the VU execution phase.
+It uses refresh-token authentication during VU execution (lazy cached per VU) and then runs the profile API checks.
 
 ## What This Test Verifies
 
@@ -34,6 +34,8 @@ API host variable:
 Optional threshold override:
 
 - `HTTP_REQ_DURATION_THRESHOLD`
+- `VUS` (positive integer)
+- `DURATION` (k6 duration string, for example `30s`, `1m`)
 
 `HTTP_REQ_DURATION_THRESHOLD` behavior from `config/thresholds.js`:
 
@@ -65,6 +67,17 @@ REFRESH_TOKEN='<refresh-token>' \
 k6 run --vus 10 --duration 1m scripts/users/profile.js
 ```
 
+Run with VUs and duration via environment variables:
+
+```bash
+USER_HOST=https://<user-host> \
+IDP_REALM_CODE=<realm-code> \
+IDP_CLIENT_ID=<client-id> \
+IDP_BASE_URL=https://<idp-host>/idp \
+REFRESH_TOKEN='<refresh-token>' \
+k6 run -e VUS=10 -e DURATION=1m scripts/users/profile.js
+```
+
 Run with custom duration threshold:
 
 ```bash
@@ -90,5 +103,5 @@ k6 run -e HTTP_REQ_DURATION_THRESHOLD='p(99)<1500' scripts/users/profile.js
 ## Notes
 
 - `USER_HOST` trailing slash is handled by the script.
-- If token retrieval fails, the test stops in init phase.
+- If token retrieval fails, the current VU iteration fails.
 - If required environment variables are missing, the script throws an error immediately.

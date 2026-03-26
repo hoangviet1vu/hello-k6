@@ -5,14 +5,14 @@ import getTokenByRefreshToken from '../../lib/auth.js';
 import thresholds from '../../config/thresholds.js';
 
 const USER_HOST = getRequiredEnv('USER_HOST').replace(/\/+$/, '');
-const PROFILE_URL = `${USER_HOST}/users/api/v0/users/profile`;
-
-const TOKEN_RESPONSE = getTokenByRefreshToken();
-const ACCESS_TOKEN = TOKEN_RESPONSE.access_token;
-const ACCESS_TOKEN_CLAIMS = decodeJwtPayload(ACCESS_TOKEN);
+const PROFILE_URL = `${USER_HOST}/api/v0/users/profile`;
+const VUS = getOptionalPositiveIntEnv('VUS');
+const DURATION = __ENV.DURATION;
 
 export const options = {
 	thresholds,
+	...(VUS !== undefined ? { vus: VUS } : {}),
+	...(DURATION ? { duration: DURATION } : {}),
 };
 
 function getRequiredEnv(key) {
@@ -21,6 +21,19 @@ function getRequiredEnv(key) {
 		throw new Error(`Missing required environment variable: ${key}`);
 	}
 	return value;
+}
+
+function getOptionalPositiveIntEnv(key) {
+	const value = __ENV[key];
+	if (!value) {
+		return undefined;
+	}
+
+	if (!/^\d+$/.test(value) || Number(value) <= 0) {
+		throw new Error(`Environment variable ${key} must be a positive integer`);
+	}
+
+	return Number(value);
 }
 
 function decodeJwtPayload(jwtToken) {
@@ -35,6 +48,19 @@ function decodeJwtPayload(jwtToken) {
 
 	const payloadJson = encoding.b64decode(tokenParts[1], 'rawurl', 's');
 	return JSON.parse(payloadJson);
+}
+
+function ensureAccessTokenContext() {
+
+	const tokenResponse = getTokenByRefreshToken();
+	var accessToken = tokenResponse.access_token;
+	var accessTokenClaims = decodeJwtPayload(accessToken);
+
+	return {
+		accessToken,
+		accessTokenClaims,
+		refreshToken: tokenResponse.refresh_token,
+	}
 }
 
 function extractProfileValue(profileBody, key) {
@@ -77,10 +103,19 @@ function validateProfileMatchesToken(profileBody, claims) {
 	return comparedCount > 0;
 }
 
-export default function () {
+export function setup() {
+
+	console.log(JSON.stringify(options));
+
+  return ensureAccessTokenContext();
+}
+
+export default function (data) {
+	const { accessToken, accessTokenClaims } = data;
+
 	const response = http.get(PROFILE_URL, {
 		headers: {
-			Authorization: `Bearer ${ACCESS_TOKEN}`,
+			Authorization: `Bearer ${accessToken}`,
 			Accept: 'application/json',
 		},
 	});
@@ -97,6 +132,6 @@ export default function () {
 		'profile response time < 1000ms': (r) => r.timings.duration < 1000,
 		'profile response is JSON': () => profileBody !== null,
 		'profile matches access token claims': () =>
-			validateProfileMatchesToken(profileBody, ACCESS_TOKEN_CLAIMS),
+			validateProfileMatchesToken(profileBody, accessTokenClaims),
 	});
 }
