@@ -25,7 +25,7 @@ jobs:
  
   # ── Job 1: Browser login — acquire tokens ─────────────────────────────────
   login:
-    name: 🔐 Browser Login (PKCE)
+    name: Browser Login (PKCE)
     runs-on: ubuntu-latest
     environment: test
  
@@ -72,3 +72,33 @@ jobs:
         run: |
           k6 run k6/scripts/login.js 2>&1 | tee /tmp/login_output.txt
           echo "Login script exit code: $?"
+
+      # Capture tokens from login output
+      - name: Capture tokens from login output
+        id: capture_tokens
+        run: |
+          ACCESS_TOKEN=$(grep 'ACCESS_TOKEN=' /tmp/login_output.txt \
+            | grep -oP 'ACCESS_TOKEN=\K[^" ]+' | head -1)
+
+          REFRESH_TOKEN=$(grep 'REFRESH_TOKEN=' /tmp/login_output.txt \
+            | grep -oP 'REFRESH_TOKEN=\K[^" ]+' | head -1)
+
+          ID_TOKEN=$(grep 'ID_TOKEN=' /tmp/login_output.txt \
+            | grep -oP 'ID_TOKEN=\K[^" ]+' | head -1)
+
+          # Validate
+          if [ -z "$REFRESH_TOKEN" ]; then
+            echo "❌ Failed to extract REFRESH_TOKEN"
+            cat /tmp/login_output.txt   # print full output for debugging
+            exit 1
+          fi
+
+          # Write to GitHub Actions outputs
+          echo "access_token=$ACCESS_TOKEN"   >> "$GITHUB_OUTPUT"
+          echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "id_token=$ID_TOKEN"           >> "$GITHUB_OUTPUT"
+
+          echo "✅ Tokens captured successfully"
+      - name: Print refresh token (debug)
+        run: |
+          echo "REFRESH_TOKEN: ${{ steps.capture_tokens.outputs.refresh_token }}"
