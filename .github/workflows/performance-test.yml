@@ -101,4 +101,5 @@ jobs:
           echo "✅ Tokens captured successfully"
       - name: Print refresh token (debug)
         run: |
+          echo "::add-mask::${{ steps.capture_tokens.outputs.refresh_token }}"
           echo "REFRESH_TOKEN: ${{ steps.capture_tokens.outputs.refresh_token }}"
