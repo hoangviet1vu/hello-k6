@@ -12,17 +12,7 @@ const DURATION = __ENV.DURATION;
 export const options = {
 	thresholds,
 	...(VUS !== undefined ? { vus: VUS } : {}),
-	...(DURATION ? { duration: DURATION } : {}),
-  scenarios: {
-    ui: {
-      executor: 'shared-iterations',
-      options: {
-        browser: {
-          type: 'chromium',
-        },
-      },
-    },
-  }
+	...(DURATION ? { duration: DURATION } : {})
 };
 
 function getRequiredEnv(key) {
@@ -63,19 +53,6 @@ function decodeJwtPayload(jwtToken) {
 async function ensureAccessTokenContext() {
 
 	const tokenResponse = await getTokenByRefreshToken();
-	var accessToken = tokenResponse.access_token;
-	var accessTokenClaims = decodeJwtPayload(accessToken);
-
-	return {
-		accessToken,
-		accessTokenClaims,
-		refreshToken: tokenResponse.refresh_token,
-	}
-}
-
-async function ensureAccessTokenContext2() {
-
-	const tokenResponse = await getTokenOverAuthCode();
 	var accessToken = tokenResponse.access_token;
 	var accessTokenClaims = decodeJwtPayload(accessToken);
 

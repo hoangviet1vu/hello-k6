@@ -1,0 +1,73 @@
+name: Performance Test
+ 
+on:
+  # Run on demand from the Actions UI
+  workflow_dispatch:
+    inputs:
+      k6_vus:
+        description: 'Number of VUs for API test'
+        required: false
+        default: '1'
+      k6_duration:
+        description: 'Duration for API test (e.g. 2m, 5m)'
+        required: false
+        default: '30s'
+ 
+  # Or run on every push to main
+  # push:
+  #   branches: [main]
+ 
+  # Or on a schedule (every night at midnight UTC)
+  # schedule:
+  #   - cron: '0 0 * * *'
+ 
+jobs:
+ 
+  # ── Job 1: Browser login — acquire tokens ─────────────────────────────────
+  login:
+    name: 🔐 Browser Login (PKCE)
+    runs-on: ubuntu-latest
+ 
+    # Expose outputs so subsequent jobs can read them
+    outputs:
+      access_token:   ${{ steps.capture_tokens.outputs.access_token }}
+      refresh_token:  ${{ steps.capture_tokens.outputs.refresh_token }}
+      token_endpoint: ${{ steps.capture_tokens.outputs.token_endpoint }}
+      client_id:      ${{ steps.capture_tokens.outputs.client_id }}
+      realm:          ${{ steps.capture_tokens.outputs.realm }}
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] \
+            https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+ 
+      # Chromium is needed for k6/browser — install it
+      - name: Install Chromium
+        run: |
+          sudo apt-get install -y chromium-browser
+          chromium-browser --version
+ 
+      # Run the browser login script
+      # Tokens are emitted as GHA_OUTPUT::key=value lines on stdout
+      - name: Run browser login
+        id: run_login
+        env:
+          BASE_URL:               ${{ vars.BASE_URL }}
+          CIID_OPERATOR_USERNAME: ${{ secrets.CIID_OPERATOR_USERNAME }}
+          CIID_OPERATOR_PASSWORD: ${{ secrets.CIID_OPERATOR_PASSWORD }}
+          K6_BROWSER_HEADLESS:    true
+        run: |
+          k6 run k6/scripts/login.js 2>&1 | tee /tmp/login_output.txt
+          echo "Login script exit code: $?"
