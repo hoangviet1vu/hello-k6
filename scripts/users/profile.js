@@ -1,8 +1,8 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import encoding from 'k6/encoding';
-import getTokenByRefreshToken from '../../../lib/auth.js';
-import thresholds from '../../../config/thresholds.js';
+import getTokenByRefreshToken from '../../lib/auth.js';
+import thresholds from '../../config/thresholds.js';
 
 const USER_HOST = getRequiredEnv('USER_HOST').replace(/\/+$/, '');
 const PROFILE_URL = `${USER_HOST}/api/v0/users/profile`;
