@@ -12,17 +12,7 @@ const DURATION = __ENV.DURATION;
 export const options = {
 	thresholds,
 	...(VUS !== undefined ? { vus: VUS } : {}),
-	...(DURATION ? { duration: DURATION } : {}),
-  scenarios: {
-    ui: {
-      executor: 'shared-iterations',
-      options: {
-        browser: {
-          type: 'chromium',
-        },
-      },
-    },
-  }
+	...(DURATION ? { duration: DURATION } : {})
 };
 
 function getRequiredEnv(key) {
