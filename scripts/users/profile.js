@@ -73,19 +73,6 @@ async function ensureAccessTokenContext() {
 	}
 }
 
-async function ensureAccessTokenContext2() {
-
-	const tokenResponse = await getTokenOverAuthCode();
-	var accessToken = tokenResponse.access_token;
-	var accessTokenClaims = decodeJwtPayload(accessToken);
-
-	return {
-		accessToken,
-		accessTokenClaims,
-		refreshToken: tokenResponse.refresh_token,
-	}
-}
-
 function extractProfileValue(profileBody, key) {
 	if (!profileBody || typeof profileBody !== 'object') {
 		return undefined;

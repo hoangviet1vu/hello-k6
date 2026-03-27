@@ -20,13 +20,14 @@ on:
   # Or on a schedule (every night at midnight UTC)
   # schedule:
   #   - cron: '0 0 * * *'
- 
+
 jobs:
  
   # ── Job 1: Browser login — acquire tokens ─────────────────────────────────
   login:
     name: 🔐 Browser Login (PKCE)
     runs-on: ubuntu-latest
+    environment: test
  
     # Expose outputs so subsequent jobs can read them
     outputs:
