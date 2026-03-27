@@ -70,7 +70,7 @@ jobs:
           CIID_OPERATOR_PASSWORD: ${{ secrets.CIID_OPERATOR_PASSWORD }}
           K6_BROWSER_HEADLESS:    true
         run: |
-          k6 run k6/scripts/login.js 2>&1 | tee /tmp/login_output.txt
+          k6 run scripts/browers/login/login.js 2>&1 | tee /tmp/login_output.txt
           echo "Login script exit code: $?"
 
       # Capture tokens from login output
