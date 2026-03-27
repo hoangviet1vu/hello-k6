@@ -103,3 +103,51 @@ jobs:
         run: |
           echo "::add-mask::${{ steps.capture_tokens.outputs.refresh_token }}"
           echo "REFRESH_TOKEN: ${{ steps.capture_tokens.outputs.refresh_token }}"
+
+ 
+  # ── Job 2: API performance test — uses tokens from Job 1 ──────────────────
+  performance-test:
+    name: 🚀 API Performance Test
+    runs-on: ubuntu-latest
+    needs: login          # ← guarantees login job finishes first
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] \
+            https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+ 
+      # Run api-test.js with tokens injected from the login job
+      - name: Run API performance test
+        env:
+          IDP_REALM_CODE: ${{ vars.IDP_REALM_CODE }}
+          IDP_CLIENT_ID:  ${{ vars.IDP_CLIENT_ID }}
+          IDP_BASE_URL:   ${{ vars.IDP_BASE_URL }}
+          REFRESH_TOKEN:  ${{ needs.login.outputs.refresh_token }}
+        run: |
+          k6 run \
+            --env IDP_REALM_CODE="$IDP_REALM_CODE" \
+            --env IDP_CLIENT_ID="$IDP_CLIENT_ID" \
+            --env IDP_BASE_URL="$IDP_BASE_URL" \
+            --env REFRESH_TOKEN="$REFRESH_TOKEN" \
+            scripts/users/profile.js
+ 
+      # Upload k6 results as artifact for review
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: k6/results/
+          retention-days: 30
