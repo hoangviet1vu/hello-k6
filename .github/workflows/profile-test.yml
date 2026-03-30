@@ -1,0 +1,74 @@
+name: Profile Performance Test
+ 
+on:
+  # Run on demand from the Actions UI
+  workflow_dispatch:
+    inputs:
+      k6_vus:
+        description: 'Number of VUs for API test'
+        required: false
+        default: '1'
+      k6_duration:
+        description: 'Duration for API test (e.g. 2m, 5m)'
+        required: false
+        default: '30s'
+      refresh_token:
+        description: 'Refresh token to use for API test'
+        required: true
+ 
+  # Or run on every push to main
+  # push:
+  #   branches: [main]
+ 
+  # Or on a schedule (every night at midnight UTC)
+  # schedule:
+  #   - cron: '0 0 * * *'
+
+jobs:
+  performance-test:
+    name: 🚀 API Performance Test
+    runs-on: ubuntu-latest
+    environment: test
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+ 
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] \
+            https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+      - name: Run API performance test
+        env:
+          IDP_REALM_CODE: ${{ vars.IDP_REALM_CODE }}
+          IDP_CLIENT_ID:  ${{ vars.IDP_CLIENT_ID }}
+          IDP_BASE_URL:   ${{ vars.IDP_BASE_URL }}
+          REFRESH_TOKEN:  ${{ github.event.inputs.refresh_token }}
+          USER_HOST:      ${{ vars.USER_HOST }}
+          VUS:            ${{ github.event.inputs.k6_vus }}
+          DURATION:       ${{ github.event.inputs.k6_duration }}
+        run: |
+          k6 run \
+            --env IDP_REALM_CODE="$IDP_REALM_CODE" \
+            --env IDP_CLIENT_ID="$IDP_CLIENT_ID" \
+            --env IDP_BASE_URL="$IDP_BASE_URL" \
+            --env REFRESH_TOKEN="$REFRESH_TOKEN" \
+            --env USER_HOST="$USER_HOST" \
+            scripts/users/profile.js
+ 
+      # Upload k6 results as artifact for review
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: k6/results/
+          retention-days: 30
