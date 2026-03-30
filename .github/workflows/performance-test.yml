@@ -70,8 +70,8 @@ jobs:
           CIID_OPERATOR_PASSWORD: ${{ secrets.CIID_OPERATOR_PASSWORD }}
           K6_BROWSER_HEADLESS:    true
         run: |
+          set -o pipefail
           k6 run scripts/browers/login/login.js 2>&1 | tee /tmp/login_output.txt
-          echo "Login script exit code: $?"
 
       # Capture tokens from login output
       - name: Capture tokens from login output
@@ -130,6 +130,16 @@ jobs:
           sudo apt-get install -y k6
  
       # Run api-test.js with tokens injected from the login job
+      - name: Validate login output
+        env:
+          REFRESH_TOKEN: ${{ needs.login.outputs.refresh_token }}
+        run: |
+          if [ -z "$REFRESH_TOKEN" ]; then
+            echo "ERROR: needs.login.outputs.refresh_token is empty"
+            exit 1
+          fi
+          echo "REFRESH_TOKEN received from login job"
+
       - name: Run API performance test
         env:
           IDP_REALM_CODE: ${{ vars.IDP_REALM_CODE }}
